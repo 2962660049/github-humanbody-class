@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>解剖模型示例查看器 · BodyParts3D</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0d1015; }
+  body { font: 14px/1.5 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; color: #e7e3dc; }
+  canvas { display: block; }
+  #ui {
+    position: fixed; top: 16px; left: 16px; z-index: 5; width: 240px; padding: 14px 16px;
+    background: rgba(22, 25, 31, .82); border: 1px solid rgba(255, 255, 255, .08);
+    border-radius: 12px; backdrop-filter: blur(10px);
+  }
+  #ui h1 { margin: 0 0 4px; font-size: 15px; font-weight: 600; letter-spacing: .02em; }
+  #ui .sub { margin: 0 0 12px; font-size: 11px; color: #8d97a5; }
+  label { display: block; font-size: 12px; color: #a9b2bf; margin: 10px 0 4px; }
+  select {
+    width: 100%; padding: 6px 8px; font: inherit; font-size: 13px; color: #e7e3dc;
+    background: #1b202a; border: 1px solid rgba(255,255,255,.12); border-radius: 8px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; cursor: pointer;
+    font-size: 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.14); color: #b9c2ce;
+    user-select: none;
+  }
+  .chip input { display: none; }
+  .chip.on { background: rgba(255,255,255,.10); color: #fff; border-color: rgba(255,255,255,.28); }
+  .chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+  #hint { margin-top: 12px; font-size: 11px; line-height: 1.5; color: #7d8794; }
+  #progress {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 9;
+    font-size: 13px; color: #cfd6df; text-align: center;
+  }
+  #progress .bar { width: 220px; height: 3px; margin-top: 10px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+  #progress .bar i { display: block; height: 100%; width: 0; background: #7fb0d9; transition: width .18s; }
+  #err {
+    position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 10; display: none;
+    max-width: 520px; padding: 18px 20px; background: #241a1a; border: 1px solid #5a2f2f;
+    border-radius: 12px; font-size: 13px; line-height: 1.6; color: #f0c8c8;
+  }
+  #err code { background: #35211f; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div id="ui">
+  <h1>人体解剖 · 示例查看器</h1>
+  <p class="sub">BodyParts3D · CC BY 4.0</p>
+
+  <label for="model">部位</label>
+  <select id="model"></select>
+
+  <label>组织（点击切换）</label>
+  <div class="chips" id="tissues"></div>
+
+  <div id="hint">左键旋转 · 滚轮缩放 · 右键平移</div>
+</div>
+
+<div id="progress">正在加载…<div class="bar"><i></i></div></div>
+<div id="err"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const MODELS = [
+  ['head', '头 Head'],
+  ['shoulder_left', '左肩 Shoulder L'],
+  ['shoulder_right', '右肩 Shoulder R'],
+  ['hand_elbow_left', '左手和肘 Hand+Elbow L'],
+  ['hand_elbow_right', '右手和肘 Hand+Elbow R'],
+  ['spine', '脊柱 Spine'],
+  ['thorax', '胸 Thorax'],
+  ['abdomen', '腹 Abdomen'],
+  ['pelvis', '骨盆 Pelvis'],
+  ['hip', '髋 Hip'],
+  ['knee_foot', '膝和足 Knee+Foot'],
+  ['skin_body', '整体皮肤 Skin'],
+];
+
+const GROUPS = [
+  ['muscle', '肌肉', '#a8524a'],
+  ['bone', '骨', '#efe9dc'],
+  ['artery', '动脉', '#c0392b'],
+  ['vein', '静脉', '#3f5c96'],
+  ['organ', '脏器', '#b07b57'],
+  ['cartilage', '软骨', '#b9c9cc'],
+  ['nerve', '神经', '#e2c65a'],
+  ['fascia', '筋膜', '#ded6c8'],
+];
+
+const params = new URLSearchParams(location.search);
+// ?base= 可指向任意静态目录，默认读同目录下的 glb/
+const BASE = params.get('base') || './glb/';
+const BASE_OK = BASE.endsWith('/') ? BASE : BASE + '/';
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1015);
+
+const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.05, 200);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+scene.add(new THREE.HemisphereLight(0xdfe9f5, 0x3a3f47, 1.1));
+const key = new THREE.DirectionalLight(0xfff2e2, 2.4);
+key.position.set(1.4, 2.2, 1.6);
+const fill = new THREE.DirectionalLight(0xbcd3ea, 0.9);
+fill.position.set(-1.8, 0.4, -1.2);
+const rim = new THREE.DirectionalLight(0xffffff, 0.8);
+rim.position.set(-0.6, 1.2, -2.0);
+scene.add(key, fill, rim);
+
+// ---- UI ----
+const sel = document.getElementById('model');
+for (const [id, label] of MODELS) {
+  const o = document.createElement('option');
+  o.value = id; o.textContent = label;
+  sel.appendChild(o);
+}
+sel.value = params.get('model') || 'thorax';
+
+const enabled = new Set(GROUPS.map((g) => g[0]));
+const chips = document.getElementById('tissues');
+for (const [id, label, color] of GROUPS) {
+  const el = document.createElement('label');
+  el.className = 'chip on';
+  el.innerHTML = `<input type="checkbox" checked><span class="dot" style="background:${color}"></span>${label}`;
+  el.querySelector('input').onchange = (e) => {
+    e.target.checked ? enabled.add(id) : enabled.delete(id);
+    el.classList.toggle('on', e.target.checked);
+    applyFilter();
+  };
+  chips.appendChild(el);
+}
+
+let current = null;
+
+function applyFilter() {
+  if (!current) return;
+  current.traverse((o) => {
+    if (!o.isMesh) return;
+    const g = o.userData.bp3d_group || 'other';
+    const envelope = o.userData.bp3d_envelope === '1';
+    o.visible = enabled.has(g) && !envelope;
+  });
+}
+
+function frame(root) {
+  const box = new THREE.Box3().setFromObject(root);
+  if (box.isEmpty()) return;
+  const size = box.getSize(new THREE.Vector3());
+  const ctr = box.getCenter(new THREE.Vector3());
+  const span = Math.max(size.x, size.y, size.z);
+  const dist = span / (2 * Math.tan((camera.fov * Math.PI) / 360)) * 1.35;
+  controls.target.copy(ctr);
+  camera.position.copy(ctr).add(new THREE.Vector3(0.35, 0.18, 1).normalize().multiplyScalar(dist));
+  camera.near = span / 200; camera.far = dist * 12;
+  camera.updateProjectionMatrix();
+  controls.minDistance = dist * 0.2;
+  controls.maxDistance = dist * 4;
+  controls.update();
+}
+
+const prog = document.getElementById('progress');
+const bar = prog.querySelector('.bar i');
+const err = document.getElementById('err');
+
+function showError(url, e) {
+  prog.style.display = 'none';
+  err.style.display = 'block';
+  err.innerHTML = `
+    <b>加载失败</b><br>
+    请求地址：<code>${url}</code><br>
+    ${String(e && e.message || e)}<br><br>
+    常见原因：用 <code>file://</code> 直接打开页面时，浏览器禁止读取本地 glb。<br>
+    解决：在该目录运行 <code>python -m http.server 8000</code> 后访问
+    <code>http://localhost:8000/example/viewer.html</code>。
+  `;
+}
+
+function load(id) {
+  const url = BASE_OK + id + '.glb';
+  prog.style.display = 'block';
+  err.style.display = 'none';
+  bar.style.width = '0%';
+
+  new GLTFLoader().load(
+    url,
+    (gltf) => {
+      if (current) {
+        scene.remove(current);
+        current.traverse((o) => {
+          if (o.isMesh) { o.geometry.dispose(); }
+        });
+      }
+      current = gltf.scene;
+      current.traverse((o) => {
+        if (o.isMesh && o.material) o.material.side = THREE.FrontSide;
+      });
+      scene.add(current);
+      applyFilter();
+      frame(current);
+      prog.style.display = 'none';
+    },
+    (ev) => {
+      if (ev.lengthComputable) bar.style.width = (ev.loaded / ev.total * 100).toFixed(0) + '%';
+    },
+    (e) => showError(url, e)
+  );
+}
+
+sel.onchange = () => load(sel.value);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+load(sel.value);
+
+renderer.setAnimationLoop(() => {
+  controls.update();
+  renderer.render(scene, camera);
+});
+</script>
+</body>
+</html>

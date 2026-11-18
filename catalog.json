@@ -1,0 +1,32 @@
+{
+  "dataset": "BodyParts3D ISA (BP3D_4.0_obj_99)",
+  "license": "CC BY 4.0",
+  "attribution": "BodyParts3D, (c) The Database Center for Life Science licensed under CC Attribution 4.0 International",
+  "source": "https://dbarchive.biosciencedbc.jp/en/bodyparts3d/",
+  "format": "glTF 2.0 binary (GLB)",
+  "units": "metre",
+  "up_axis": "Y",
+  "converted_with": "Blender 5.2.2 LTS / Blender glTF I/O 5.2.40",
+  "totals": { "files": 12, "meshes": 2234, "triangles": 8149976, "bytes": 178685000 },
+  "models": [
+    { "file": "glb/head.glb", "part_zh": "头", "part_en": "head", "parts": 581, "triangles": 1942276, "bytes": 40457000, "note": "颅骨、面骨、脑与脑血管、眼、牙、喉咽、颈部结构" },
+    { "file": "glb/shoulder_left.glb", "part_zh": "左肩", "part_en": "shoulder_left", "parts": 42, "triangles": 195690, "bytes": 3920000, "note": "锁骨、肩胛骨、三角肌、肩袖、肱骨上端、腋血管" },
+    { "file": "glb/shoulder_right.glb", "part_zh": "右肩", "part_en": "shoulder_right", "parts": 42, "triangles": 192870, "bytes": 3880000, "note": "同上（右）" },
+    { "file": "glb/hand_elbow_left.glb", "part_zh": "左手和肘", "part_en": "hand_elbow_left", "parts": 123, "triangles": 227028, "bytes": 4970000, "note": "前臂肌群、桡尺骨、腕掌指骨、手部肌与肌腱、掌弓、前臂血管" },
+    { "file": "glb/hand_elbow_right.glb", "part_zh": "右手和肘", "part_en": "hand_elbow_right", "parts": 125, "triangles": 227322, "bytes": 4980000, "note": "同上（右）" },
+    { "file": "glb/spine.glb", "part_zh": "脊柱", "part_en": "spine", "parts": 139, "triangles": 420936, "bytes": 10590000, "note": "全部椎骨、骶骨、尾骨、椎间盘、椎旁肌群" },
+    { "file": "glb/thorax.glb", "part_zh": "胸", "part_en": "thorax", "parts": 822, "triangles": 2298674, "bytes": 54230000, "note": "肋、胸骨、心脏与冠状血管、主动脉、腔静脉、肺动静脉、食管、气管、胸壁肌" },
+    { "file": "glb/abdomen.glb", "part_zh": "腹", "part_en": "abdomen", "parts": 334, "triangles": 914266, "bytes": 20150000, "note": "肝、胆、胰、胃、肠、脾、肾、腹主动脉/下腔静脉、腹部肌群" },
+    { "file": "glb/pelvis.glb", "part_zh": "骨盆", "part_en": "pelvis", "parts": 147, "triangles": 324228, "bytes": 6890000, "note": "髋骨、盆腔脏器（膀胱/前列腺等）、盆底肌、髂内血管" },
+    { "file": "glb/hip.glb", "part_zh": "髋", "part_en": "hip", "parts": 137, "triangles": 509430, "bytes": 10210000, "note": "股骨、股骨头颈、髋周肌群、股动静脉" },
+    { "file": "glb/knee_foot.glb", "part_zh": "膝和足", "part_en": "knee_foot", "parts": 226, "triangles": 657022, "bytes": 13420000, "note": "髌骨、胫腓骨、足骨、小腿肌群、足背/足底血管" },
+    { "file": "glb/skin_body.glb", "part_zh": "整体皮肤", "part_en": "skin_body", "parts": 1, "triangles": 203382, "bytes": 4900000, "note": "全身体表皮肤，单独成文件；包住所有结构，按需加载" }
+  ],
+  "node_extras": {
+    "bp3d_id": "原始元素 id，如 FJ1932",
+    "bp3d_group": "muscle|bone|artery|vein|organ|cartilage|nerve|fascia|other",
+    "bp3d_fma": "FMA 本体 id",
+    "bp3d_cats": "该网格所属的全部部位，逗号分隔",
+    "bp3d_envelope": "值为 1 表示区域包络（解剖学区/肌群外壳），共 126 个，可整体隐藏"
+  }
+}
